@@ -285,7 +285,10 @@ class AxiStreamBase(Reset):
         self.bus = bus
         self.clock = clock
         self.reset = reset
-        self.log = logging.getLogger(f"cocotb.{bus._entity._name}.{bus._name}")
+        if bus._name:
+            self.log = logging.getLogger(f"cocotb.{bus._entity._name}.{bus._name}")
+        else:
+            self.log = logging.getLogger(f"cocotb.{bus._entity._name}")
 
         self.log.info("AXI stream %s", self._type)
         self.log.info("cocotbext-axi version %s", __version__)
@@ -827,7 +830,7 @@ class AxiStreamSink(AxiStreamMonitor, AxiStreamPause):
         wake_event = self.wake_event.wait()
 
         while True:
-            pause_sample = self.pause
+            pause_sample = bool(self.pause)
 
             await clock_edge_event
 
@@ -883,8 +886,14 @@ class AxiStreamSink(AxiStreamMonitor, AxiStreamPause):
                 self.active = reduce(lambda r, f: r or bool(f), frames, False)
 
             if has_tready:
-                self.bus.tready.value = (not self.full() and not pause_sample)
+                paused = self.full() or pause_sample
 
-            if not tvalid_sample or (self.pause and pause_sample) or self.full():
-                self.wake_event.clear()
-                await wake_event
+                self.bus.tready.value = not paused
+
+                if (not tvalid_sample or paused) and (pause_sample == bool(self.pause)):
+                    self.wake_event.clear()
+                    await wake_event
+            else:
+                if not tvalid_sample:
+                    self.wake_event.clear()
+                    await wake_event
