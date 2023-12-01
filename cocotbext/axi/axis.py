@@ -178,12 +178,12 @@ class AxiStreamFrame:
 
     def info(self):
         tid = ""
-        if type(self.tid) is (int, bool):
+        if type(self.tid) in (int, bool):
             tid = self.tid
         elif self.tid is not None:
             tid = self.tid[0] if all(self.tid[0] == i for i in self.tid) else self.tid
         tdest = ""
-        if type(self.tdest) is (int, bool):
+        if type(self.tdest) in (int, bool):
             tdest = self.tdest
         elif self.tdest is not None:
             tdest = self.tdest[0] if all(self.tdest[0] == i for i in self.tdest) else self.tdest
