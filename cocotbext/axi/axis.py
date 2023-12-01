@@ -191,7 +191,6 @@ class AxiStreamFrame:
             f"{type(self).__name__}(tdata=[..]({len(self.tdata)!r} B), "
             f"tid={tid!r}, "
             f"tdest={tdest!r}, "
-            f"tuser=[..]{len(self.tdata)!r} B), "
             f"sim_time_start={self.sim_time_start!r}, "
             f"sim_time_end={self.sim_time_end!r})"
             )
