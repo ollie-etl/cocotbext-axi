@@ -930,7 +930,10 @@ class AxiStreamSink(AxiStreamMonitor, AxiStreamPause):
 
                 if not has_tlast or self.bus.tlast.value:
                     frame.sim_time_end = get_sim_time()
-                    self.log.info("RX frame: %s", frame)
+                    if self.log.isEnabledFor(logging.DEBUG):
+                        self.log.debug("RX frame: %s", frame)
+                    else: 
+                        self.log.info("RX frame: %s", frame.info())
 
                     self.queue_occupancy_bytes += len(frame)
                     self.queue_occupancy_frames += 1
