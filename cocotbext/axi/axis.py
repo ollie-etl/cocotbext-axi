@@ -178,15 +178,15 @@ class AxiStreamFrame:
 
     def info(self):
         tid = ""
-        if type(self.tid) in (int, bool):
-            tid = self.tid
+        if type(self.tid) == list:
+            tid = self.tid[0] if all(self.tid[0] == i for i in self.tid) else "[..]"
         elif self.tid is not None:
-            tid = self.tid[0] if all(self.tid[0] == i for i in self.tid) else self.tid
+            tid = self.tid
         tdest = ""
-        if type(self.tdest) in (int, bool):
-            tdest = self.tdest
+        if type(self.tdest) == list:
+            tdest = self.tdest[0] if all(self.tdest[0] == i for i in self.tdest) else "[..]"
         elif self.tdest is not None:
-            tdest = self.tdest[0] if all(self.tdest[0] == i for i in self.tdest) else self.tdest
+            tdest = self.tdest
         return (
             f"{type(self).__name__}(tdata=[..]({len(self.tdata)!r} B), "
             f"tid={tid!r}, "
