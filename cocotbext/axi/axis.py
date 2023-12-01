@@ -181,12 +181,12 @@ class AxiStreamFrame:
         if type(self.tid) is (int, bool):
             tid = self.tid
         elif self.tid is not None:
-            tid self.tid[0] if all(self.tid[0] == i for i in self.tid) else self.tid
+            tid = self.tid[0] if all(self.tid[0] == i for i in self.tid) else self.tid
         tdest = ""
         if type(self.tdest) is (int, bool):
             tdest = self.tdest
         elif self.tdest is not None:
-            tid self.tdest[0] if all(self.tdest[0] == i for i in self.tdest) else self.tdest
+            tdest = self.tdest[0] if all(self.tdest[0] == i for i in self.tdest) else self.tdest
         return (
             f"{type(self).__name__}(tdata=[..]({len(self.tdata)!r} B), "
             f"tid={tid!r}, "
