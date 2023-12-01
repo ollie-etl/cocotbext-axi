@@ -161,6 +161,18 @@ class AxiStreamFrame:
         elif callable(self.tx_complete):
             self.tx_complete(self)
 
+    def info(self):
+        tid = self.tid[0] if self.tid and all(self.tid[0] == i for i in self.tid) else self.tid
+        tdest = self.tdest[0] if self.tdest and all(self.tdest[0] == i for i in self.tdest) else self.tdest
+        return (
+            f"{type(self).__name__}(tdata=[..]({len(self.tdata)!r} B), "
+            f"tid={tid!r}, "
+            f"tdest={tdest!r}, "
+            f"tuser=[..]{len(self.tdata)!r} B), "
+            f"sim_time_start={self.sim_time_start!r}, "
+            f"sim_time_end={self.sim_time_end!r})"
+            )
+
     def __eq__(self, other):
         if not isinstance(other, AxiStreamFrame):
             return False
@@ -527,7 +539,10 @@ class AxiStreamSource(AxiStreamBase, AxiStreamPause):
                     self.current_frame = frame
                     frame.sim_time_start = get_sim_time()
                     frame.sim_time_end = None
-                    self.log.info("TX frame: %s", frame)
+                    if self.log.isEnabledFor(logging.DEBUG):
+                        self.log.debug("TX frame: %s", frame)
+                    else: 
+                        self.log.info("TX frame: %s", frame.info())
                     frame.normalize()
                     self.active = True
                     frame_offset = 0
@@ -710,7 +725,10 @@ class AxiStreamMonitor(AxiStreamBase):
 
                 if not has_tlast or self.bus.tlast.value:
                     frame.sim_time_end = get_sim_time()
-                    self.log.info("RX frame: %s", frame)
+                    if self.log.isEnabledFor(logging.DEBUG):
+                        self.log.debug("RX frame: %s", frame)
+                    else: 
+                        self.log.info("RX frame: %s", frame.info())
 
                     self.queue_occupancy_bytes += len(frame)
                     self.queue_occupancy_frames += 1
