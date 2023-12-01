@@ -179,12 +179,12 @@ class AxiStreamFrame:
     def info(self):
         tid = ""
         if type(self.tid) == list:
-            tid = self.tid[0] if all(self.tid[0] == i for i in self.tid) else "[..]"
+            tid = self.tid[0] if len(self.tid) > 0 and all(self.tid[0] == i for i in self.tid) else "[..]"
         elif self.tid is not None:
             tid = self.tid
         tdest = ""
         if type(self.tdest) == list:
-            tdest = self.tdest[0] if all(self.tdest[0] == i for i in self.tdest) else "[..]"
+            tdest = self.tdest[0] if len(self.tdest) > 0 and all(self.tdest[0] == i for i in self.tdest) else "[..]"
         elif self.tdest is not None:
             tdest = self.tdest
         return (
