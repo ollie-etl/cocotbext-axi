@@ -580,8 +580,6 @@ class ApbSlave(ApbPause, Reset):
                 if start_offset is not None and offset != start_offset:
                     write_ops.append((addr+start_offset, data[start_offset:offset]))
 
-                print(write_ops)
-
                 # perform writes
                 try:
                     for addr, data in write_ops:
