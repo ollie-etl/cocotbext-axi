@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2025 Alex Forencich
+# Copyright (c) 2025 Alex Forencich
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,13 +18,37 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-TOPTARGETS := all clean
+TOPLEVEL_LANG = verilog
 
-SUBDIRS := $(wildcard */.)
+SIM ?= icarus
+WAVES ?= 0
 
-$(TOPTARGETS): $(SUBDIRS)
-$(SUBDIRS):
-	$(MAKE) -C $@ $(MAKECMDGOALS)
+COCOTB_HDL_TIMEUNIT = 1ns
+COCOTB_HDL_TIMEPRECISION = 1ns
 
-.PHONY: $(TOPTARGETS) $(SUBDIRS)
+DUT      = test_apb
+COCOTB_TEST_MODULES = $(DUT)
+COCOTB_TOPLEVEL     = $(DUT)
+MODULE   = $(COCOTB_TEST_MODULES)
+TOPLEVEL = $(COCOTB_TOPLEVEL)
+VERILOG_SOURCES += $(DUT).v
 
+# module parameters
+export PARAM_DATA_W := 32
+export PARAM_ADDR_W := 32
+export PARAM_STRB_W := $(shell expr $(PARAM_DATA_W) / 8 )
+
+ifeq ($(SIM), icarus)
+	PLUSARGS += -fst
+
+	COMPILE_ARGS += $(foreach v,$(filter PARAM_%,$(.VARIABLES)),-P $(COCOTB_TOPLEVEL).$(subst PARAM_,,$(v))=$($(v)))
+else ifeq ($(SIM), verilator)
+	COMPILE_ARGS += $(foreach v,$(filter PARAM_%,$(.VARIABLES)),-G$(subst PARAM_,,$(v))=$($(v)))
+
+	ifeq ($(WAVES), 1)
+		COMPILE_ARGS += --trace-fst
+		VERILATOR_TRACE = 1
+	endif
+endif
+
+include $(shell cocotb-config --makefiles)/Makefile.sim

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 
-Copyright (c) 2020 Alex Forencich
+Copyright (c) 2020-2025 Alex Forencich
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -135,7 +135,7 @@ def incrementing_payload(length):
     return bytearray(itertools.islice(itertools.cycle(range(256)), length))
 
 
-if cocotb.SIM_NAME:
+if getattr(cocotb, 'top', None) is not None:
 
     factory = TestFactory(run_test)
     factory.add_option("payload_lengths", [size_list])

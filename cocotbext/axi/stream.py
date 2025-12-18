@@ -1,6 +1,6 @@
 """
 
-Copyright (c) 2020 Alex Forencich
+Copyright (c) 2020-2025 Alex Forencich
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,11 @@ import cocotb
 from cocotb.queue import Queue, QueueFull
 from cocotb.triggers import RisingEdge, Event, First, Timer
 from cocotb_bus.bus import Bus
+
+try:
+    from cocotb.types import LogicArray
+except ImportError:
+    pass
 
 from .reset import Reset
 
@@ -119,9 +124,13 @@ class StreamBase(Reset):
                 if sig in self._signal_widths:
                     assert len(getattr(self.bus, sig)) == self._signal_widths[sig]
                 if self._init_x and sig not in (self._valid_signal, self._ready_signal):
-                    v = getattr(self.bus, sig).value
-                    v.binstr = 'x'*len(v)
-                    getattr(self.bus, sig).setimmediatevalue(v)
+                    s = getattr(self.bus, sig)
+                    try:
+                        v = LogicArray("x"*len(s.value))
+                    except NameError:
+                        v = s.value
+                        v.binstr = 'x'*len(v)
+                    s.setimmediatevalue(v)
 
         self._run_cr = None
 

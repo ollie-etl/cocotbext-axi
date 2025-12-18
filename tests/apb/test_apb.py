@@ -1,6 +1,6 @@
 """
 
-Copyright (c) 2020-2025 Alex Forencich
+Copyright (c) 2025 Alex Forencich
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, Timer
 from cocotb.regression import TestFactory
 
-from cocotbext.axi import AxiLiteBus, AxiLiteMaster, AxiLiteRam
+from cocotbext.axi import ApbBus, ApbMaster, ApbRam
 
 
 class TB:
@@ -47,24 +47,16 @@ class TB:
 
         cocotb.start_soon(Clock(dut.clk, 2, units="ns").start())
 
-        self.axil_master = AxiLiteMaster(AxiLiteBus.from_prefix(dut, "axil"), dut.clk, dut.rst)
-        self.axil_ram = AxiLiteRam(AxiLiteBus.from_prefix(dut, "axil"), dut.clk, dut.rst, size=2**16)
+        self.apb_master = ApbMaster(ApbBus.from_prefix(dut, "apb"), dut.clk, dut.rst)
+        self.apb_ram = ApbRam(ApbBus.from_prefix(dut, "apb"), dut.clk, dut.rst, size=2**16)
 
     def set_idle_generator(self, generator=None):
         if generator:
-            self.axil_master.write_if.aw_channel.set_pause_generator(generator())
-            self.axil_master.write_if.w_channel.set_pause_generator(generator())
-            self.axil_master.read_if.ar_channel.set_pause_generator(generator())
-            self.axil_ram.write_if.b_channel.set_pause_generator(generator())
-            self.axil_ram.read_if.r_channel.set_pause_generator(generator())
+            self.apb_master.set_pause_generator(generator())
 
     def set_backpressure_generator(self, generator=None):
         if generator:
-            self.axil_master.write_if.b_channel.set_pause_generator(generator())
-            self.axil_master.read_if.r_channel.set_pause_generator(generator())
-            self.axil_ram.write_if.aw_channel.set_pause_generator(generator())
-            self.axil_ram.write_if.w_channel.set_pause_generator(generator())
-            self.axil_ram.read_if.ar_channel.set_pause_generator(generator())
+            self.apb_ram.set_pause_generator(generator())
 
     async def cycle_reset(self):
         self.dut.rst.setimmediatevalue(0)
@@ -82,7 +74,7 @@ async def run_test_write(dut, data_in=None, idle_inserter=None, backpressure_ins
 
     tb = TB(dut)
 
-    byte_lanes = tb.axil_master.write_if.byte_lanes
+    byte_lanes = tb.apb_master.byte_lanes
 
     await tb.cycle_reset()
 
@@ -95,15 +87,15 @@ async def run_test_write(dut, data_in=None, idle_inserter=None, backpressure_ins
             addr = offset+0x1000
             test_data = bytearray([x % 256 for x in range(length)])
 
-            tb.axil_ram.write(addr-128, b'\xaa'*(length+256))
+            tb.apb_ram.write(addr-128, b'\xaa'*(length+256))
 
-            await tb.axil_master.write(addr, test_data)
+            await tb.apb_master.write(addr, test_data)
 
-            tb.log.debug("%s", tb.axil_ram.hexdump_str((addr & ~0xf)-16, (((addr & 0xf)+length-1) & ~0xf)+48))
+            tb.log.debug("%s", tb.apb_ram.hexdump_str((addr & ~0xf)-16, (((addr & 0xf)+length-1) & ~0xf)+48))
 
-            assert tb.axil_ram.read(addr, length) == test_data
-            assert tb.axil_ram.read(addr-1, 1) == b'\xaa'
-            assert tb.axil_ram.read(addr+length, 1) == b'\xaa'
+            assert tb.apb_ram.read(addr, length) == test_data
+            assert tb.apb_ram.read(addr-1, 1) == b'\xaa'
+            assert tb.apb_ram.read(addr+length, 1) == b'\xaa'
 
     await RisingEdge(dut.clk)
     await RisingEdge(dut.clk)
@@ -113,7 +105,7 @@ async def run_test_read(dut, data_in=None, idle_inserter=None, backpressure_inse
 
     tb = TB(dut)
 
-    byte_lanes = tb.axil_master.write_if.byte_lanes
+    byte_lanes = tb.apb_master.byte_lanes
 
     await tb.cycle_reset()
 
@@ -126,9 +118,9 @@ async def run_test_read(dut, data_in=None, idle_inserter=None, backpressure_inse
             addr = offset+0x1000
             test_data = bytearray([x % 256 for x in range(length)])
 
-            tb.axil_ram.write(addr, test_data)
+            tb.apb_ram.write(addr, test_data)
 
-            data = await tb.axil_master.read(addr, length)
+            data = await tb.apb_master.read(addr, length)
 
             assert data.data == test_data
 
@@ -140,7 +132,7 @@ async def run_test_write_words(dut):
 
     tb = TB(dut)
 
-    byte_lanes = tb.axil_master.write_if.byte_lanes
+    byte_lanes = tb.apb_master.byte_lanes
 
     await tb.cycle_reset()
 
@@ -150,41 +142,41 @@ async def run_test_write_words(dut):
             addr = offset+0x1000
 
             test_data = bytearray([x % 256 for x in range(length)])
-            event = tb.axil_master.init_write(addr, test_data)
+            event = tb.apb_master.init_write(addr, test_data)
             await event.wait()
-            assert tb.axil_ram.read(addr, length) == test_data
+            assert tb.apb_ram.read(addr, length) == test_data
 
             test_data = bytearray([x % 256 for x in range(length)])
-            await tb.axil_master.write(addr, test_data)
-            assert tb.axil_ram.read(addr, length) == test_data
+            await tb.apb_master.write(addr, test_data)
+            assert tb.apb_ram.read(addr, length) == test_data
 
             test_data = [x * 0x1001 for x in range(length)]
-            await tb.axil_master.write_words(addr, test_data)
-            assert tb.axil_ram.read_words(addr, length) == test_data
+            await tb.apb_master.write_words(addr, test_data)
+            assert tb.apb_ram.read_words(addr, length) == test_data
 
             test_data = [x * 0x10200201 for x in range(length)]
-            await tb.axil_master.write_dwords(addr, test_data)
-            assert tb.axil_ram.read_dwords(addr, length) == test_data
+            await tb.apb_master.write_dwords(addr, test_data)
+            assert tb.apb_ram.read_dwords(addr, length) == test_data
 
             test_data = [x * 0x1020304004030201 for x in range(length)]
-            await tb.axil_master.write_qwords(addr, test_data)
-            assert tb.axil_ram.read_qwords(addr, length) == test_data
+            await tb.apb_master.write_qwords(addr, test_data)
+            assert tb.apb_ram.read_qwords(addr, length) == test_data
 
             test_data = 0x01*length
-            await tb.axil_master.write_byte(addr, test_data)
-            assert tb.axil_ram.read_byte(addr) == test_data
+            await tb.apb_master.write_byte(addr, test_data)
+            assert tb.apb_ram.read_byte(addr) == test_data
 
             test_data = 0x1001*length
-            await tb.axil_master.write_word(addr, test_data)
-            assert tb.axil_ram.read_word(addr) == test_data
+            await tb.apb_master.write_word(addr, test_data)
+            assert tb.apb_ram.read_word(addr) == test_data
 
             test_data = 0x10200201*length
-            await tb.axil_master.write_dword(addr, test_data)
-            assert tb.axil_ram.read_dword(addr) == test_data
+            await tb.apb_master.write_dword(addr, test_data)
+            assert tb.apb_ram.read_dword(addr) == test_data
 
             test_data = 0x1020304004030201*length
-            await tb.axil_master.write_qword(addr, test_data)
-            assert tb.axil_ram.read_qword(addr) == test_data
+            await tb.apb_master.write_qword(addr, test_data)
+            assert tb.apb_ram.read_qword(addr) == test_data
 
     await RisingEdge(dut.clk)
     await RisingEdge(dut.clk)
@@ -194,7 +186,7 @@ async def run_test_read_words(dut):
 
     tb = TB(dut)
 
-    byte_lanes = tb.axil_master.write_if.byte_lanes
+    byte_lanes = tb.apb_master.byte_lanes
 
     await tb.cycle_reset()
 
@@ -204,42 +196,42 @@ async def run_test_read_words(dut):
             addr = offset+0x1000
 
             test_data = bytearray([x % 256 for x in range(length)])
-            tb.axil_ram.write(addr, test_data)
-            event = tb.axil_master.init_read(addr, length)
+            tb.apb_ram.write(addr, test_data)
+            event = tb.apb_master.init_read(addr, length)
             await event.wait()
             assert event.data.data == test_data
 
             test_data = bytearray([x % 256 for x in range(length)])
-            tb.axil_ram.write(addr, test_data)
-            assert (await tb.axil_master.read(addr, length)).data == test_data
+            tb.apb_ram.write(addr, test_data)
+            assert (await tb.apb_master.read(addr, length)).data == test_data
 
             test_data = [x * 0x1001 for x in range(length)]
-            tb.axil_ram.write_words(addr, test_data)
-            assert await tb.axil_master.read_words(addr, length) == test_data
+            tb.apb_ram.write_words(addr, test_data)
+            assert await tb.apb_master.read_words(addr, length) == test_data
 
             test_data = [x * 0x10200201 for x in range(length)]
-            tb.axil_ram.write_dwords(addr, test_data)
-            assert await tb.axil_master.read_dwords(addr, length) == test_data
+            tb.apb_ram.write_dwords(addr, test_data)
+            assert await tb.apb_master.read_dwords(addr, length) == test_data
 
             test_data = [x * 0x1020304004030201 for x in range(length)]
-            tb.axil_ram.write_qwords(addr, test_data)
-            assert await tb.axil_master.read_qwords(addr, length) == test_data
+            tb.apb_ram.write_qwords(addr, test_data)
+            assert await tb.apb_master.read_qwords(addr, length) == test_data
 
             test_data = 0x01*length
-            tb.axil_ram.write_byte(addr, test_data)
-            assert await tb.axil_master.read_byte(addr) == test_data
+            tb.apb_ram.write_byte(addr, test_data)
+            assert await tb.apb_master.read_byte(addr) == test_data
 
             test_data = 0x1001*length
-            tb.axil_ram.write_word(addr, test_data)
-            assert await tb.axil_master.read_word(addr) == test_data
+            tb.apb_ram.write_word(addr, test_data)
+            assert await tb.apb_master.read_word(addr) == test_data
 
             test_data = 0x10200201*length
-            tb.axil_ram.write_dword(addr, test_data)
-            assert await tb.axil_master.read_dword(addr) == test_data
+            tb.apb_ram.write_dword(addr, test_data)
+            assert await tb.apb_master.read_dword(addr) == test_data
 
             test_data = 0x1020304004030201*length
-            tb.axil_ram.write_qword(addr, test_data)
-            assert await tb.axil_master.read_qword(addr) == test_data
+            tb.apb_ram.write_qword(addr, test_data)
+            assert await tb.apb_master.read_qword(addr) == test_data
 
     await RisingEdge(dut.clk)
     await RisingEdge(dut.clk)
@@ -272,7 +264,7 @@ async def run_stress_test(dut, idle_inserter=None, backpressure_inserter=None):
     workers = []
 
     for k in range(16):
-        workers.append(cocotb.start_soon(worker(tb.axil_master, k*0x1000, 0x1000, count=16)))
+        workers.append(cocotb.start_soon(worker(tb.apb_master, k*0x1000, 0x1000, count=16)))
 
     while workers:
         await workers.pop(0).join()
@@ -308,9 +300,9 @@ if getattr(cocotb, 'top', None) is not None:
 tests_dir = os.path.dirname(__file__)
 
 
-@pytest.mark.parametrize("data_width", [8, 16, 32])
-def test_axil(request, data_width):
-    dut = "test_axil"
+@pytest.mark.parametrize("data_w", [8, 16, 32])
+def test_apb(request, data_w):
+    dut = "test_apb"
     module = os.path.splitext(os.path.basename(__file__))[0]
     toplevel = dut
 
@@ -320,9 +312,9 @@ def test_axil(request, data_width):
 
     parameters = {}
 
-    parameters['DATA_WIDTH'] = data_width
-    parameters['ADDR_WIDTH'] = 32
-    parameters['STRB_WIDTH'] = parameters['DATA_WIDTH'] // 8
+    parameters['DATA_W'] = data_w
+    parameters['ADDR_W'] = 32
+    parameters['STRB_W'] = parameters['DATA_W'] // 8
 
     extra_env = {f'PARAM_{k}': str(v) for k, v in parameters.items()}
 

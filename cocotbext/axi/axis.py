@@ -1,6 +1,6 @@
 """
 
-Copyright (c) 2020 Alex Forencich
+Copyright (c) 2020-2025 Alex Forencich
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,11 @@ from cocotb.queue import Queue, QueueFull
 from cocotb.triggers import RisingEdge, Timer, First, Event
 from cocotb.utils import get_sim_time
 from cocotb_bus.bus import Bus
+
+try:
+    from cocotb.types import LogicArray
+except ImportError:
+    pass
 
 from .version import __version__
 from .reset import Reset
@@ -315,7 +320,7 @@ class AxiStreamBase(Reset):
 
         self.log.info("AXI stream %s", self._type)
         self.log.info("cocotbext-axi version %s", __version__)
-        self.log.info("Copyright (c) 2020 Alex Forencich")
+        self.log.info("Copyright (c) 2020-2025 Alex Forencich")
         self.log.info("https://github.com/alexforencich/cocotbext-axi")
 
         super().__init__(*args, **kwargs)
@@ -348,9 +353,13 @@ class AxiStreamBase(Reset):
         for sig in self._signals+self._optional_signals:
             if hasattr(self.bus, sig):
                 if self._init_x and sig not in ("tvalid", "tready"):
-                    v = getattr(self.bus, sig).value
-                    v.binstr = 'x'*len(v)
-                    getattr(self.bus, sig).setimmediatevalue(v)
+                    s = getattr(self.bus, sig)
+                    try:
+                        v = LogicArray("x"*len(s.value))
+                    except NameError:
+                        v = s.value
+                        v.binstr = 'x'*len(v)
+                    s.setimmediatevalue(v)
 
         if hasattr(self.bus, "tkeep"):
             self.byte_lanes = len(self.bus.tkeep)
@@ -806,17 +815,17 @@ class AxiStreamMonitor(AxiStreamBase):
                     self.active = True
 
                 for offset in range(self.byte_lanes):
-                    frame.tdata.append((self.bus.tdata.value.integer >> (offset * self.byte_size)) & self.byte_mask)
+                    frame.tdata.append((int(self.bus.tdata.value) >> (offset * self.byte_size)) & self.byte_mask)
                     if has_tkeep:
-                        frame.tkeep.append((self.bus.tkeep.value.integer >> offset) & 1)
+                        frame.tkeep.append((int(self.bus.tkeep.value) >> offset) & 1)
                     if has_tstrb:
-                        frame.tstrb.append((self.bus.tstrb.value.integer >> offset) & 1)
+                        frame.tstrb.append((int(self.bus.tstrb.value) >> offset) & 1)
                     if has_tid:
-                        frame.tid.append(self.bus.tid.value.integer)
+                        frame.tid.append(int(self.bus.tid.value))
                     if has_tdest:
-                        frame.tdest.append(self.bus.tdest.value.integer)
+                        frame.tdest.append(int(self.bus.tdest.value))
                     if has_tuser:
-                        frame.tuser.append(self.bus.tuser.value.integer)
+                        frame.tuser.append(int(self.bus.tuser.value))
 
                 if not has_tlast or self.bus.tlast.value:
                     frame.sim_time_end = get_sim_time()
@@ -916,17 +925,17 @@ class AxiStreamSink(AxiStreamMonitor, AxiStreamPause):
                     self.active = True
 
                 for offset in range(self.byte_lanes):
-                    frame.tdata.append((self.bus.tdata.value.integer >> (offset * self.byte_size)) & self.byte_mask)
+                    frame.tdata.append((int(self.bus.tdata.value) >> (offset * self.byte_size)) & self.byte_mask)
                     if has_tkeep:
-                        frame.tkeep.append((self.bus.tkeep.value.integer >> offset) & 1)
+                        frame.tkeep.append((int(self.bus.tkeep.value) >> offset) & 1)
                     if has_tstrb:
-                        frame.tstrb.append((self.bus.tstrb.value.integer >> offset) & 1)
+                        frame.tstrb.append((int(self.bus.tstrb.value) >> offset) & 1)
                     if has_tid:
-                        frame.tid.append(self.bus.tid.value.integer)
+                        frame.tid.append(int(self.bus.tid.value))
                     if has_tdest:
-                        frame.tdest.append(self.bus.tdest.value.integer)
+                        frame.tdest.append(int(self.bus.tdest.value))
                     if has_tuser:
-                        frame.tuser.append(self.bus.tuser.value.integer)
+                        frame.tuser.append(int(self.bus.tuser.value))
 
                 if not has_tlast or self.bus.tlast.value:
                     frame.sim_time_end = get_sim_time()

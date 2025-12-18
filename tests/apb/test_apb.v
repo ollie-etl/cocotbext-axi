@@ -1,6 +1,6 @@
-"""
+/*
 
-Copyright (c) 2020-2025 Alex Forencich
+Copyright (c) 2025 Alex Forencich
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,31 +20,35 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
-"""
+*/
 
+// Language: Verilog 2001
 
-def hexdump_line(data, offset, row_size=16):
-    h = ""
-    c = ""
-    for ch in data[0:row_size]:
-        h += f"{ch:02x} "
-        c += chr(ch) if 32 < ch < 127 else "."
-    return f"{offset:08x}: {h:{row_size*3}} {c}"
+`timescale 1ns / 1ns
 
+/*
+ * APB test module
+ */
+module test_apb #
+(
+    parameter DATA_W = 32,
+    parameter ADDR_W = 16,
+    parameter STRB_W = (DATA_W/8)
+)
+(
+    input  wire               clk,
+    input  wire               rst,
 
-def hexdump(data, start=0, length=None, row_size=16, prefix="", offset=0):
-    stop = min(start+length, len(data)) if length else len(data)
-    for k in range(start, stop, row_size):
-        print(prefix+hexdump_line(data[k:min(k+row_size, stop)], k+offset, row_size))
+    inout  wire [ADDR_W-1:0]  apb_paddr,
+    inout  wire [2:0]         apb_pprot,
+    inout  wire               apb_psel,
+    inout  wire               apb_penable,
+    inout  wire               apb_pwrite,
+    inout  wire [DATA_W-1:0]  apb_pwdata,
+    inout  wire [STRB_W-1:0]  apb_pstrb,
+    inout  wire               apb_pready,
+    inout  wire [DATA_W-1:0]  apb_prdata,
+    inout  wire               apb_pslverr
+);
 
-
-def hexdump_lines(data, start=0, length=None, row_size=16, prefix="", offset=0):
-    lines = []
-    stop = min(start+length, len(data)) if length else len(data)
-    for k in range(start, stop, row_size):
-        lines.append(prefix+hexdump_line(data[k:min(k+row_size, stop)], k+offset, row_size))
-    return lines
-
-
-def hexdump_str(data, start=0, length=None, row_size=16, prefix="", offset=0):
-    return "\n".join(hexdump_lines(data, start, length, row_size, prefix, offset))
+endmodule

@@ -1,6 +1,6 @@
 """
 
-Copyright (c) 2020 Alex Forencich
+Copyright (c) 2020-2025 Alex Forencich
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -296,7 +296,7 @@ def cycle_pause():
     return itertools.cycle([1, 1, 1, 0])
 
 
-if cocotb.SIM_NAME:
+if getattr(cocotb, 'top', None) is not None:
 
     data_width = len(cocotb.top.axi_wdata)
     byte_lanes = data_width // 8
